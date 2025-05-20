@@ -1,0 +1,2845 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plateforme Éducative Intégrée</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver/dist/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        secondary: '#4a4a4a',
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        info: '#3b82f6',
+                        warning: '#f59e0b'
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif']
+                    }
+                }
+            },
+            darkMode: 'class'
+        }
+    </script>
+</head>
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 dark:text-white font-sans">
+    <!-- Application du mode sombre automatiquement -->
+    <script>
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Utilisation de localStorage pour la persistance des données
+        const appStorage = {
+            setItem(key, value) {
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    console.error("Erreur de stockage local:", e);
+                }
+            },
+            getItem(key) {
+                try {
+                    return localStorage.getItem(key) || null;
+                } catch (e) {
+                    console.error("Erreur de récupération du stockage local:", e);
+                    return null;
+                }
+            },
+            removeItem(key) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    console.error("Erreur de suppression du stockage local:", e);
+                }
+            },
+            clear() {
+                try {
+                    localStorage.clear();
+                } catch (e) {
+                    console.error("Erreur d'effacement du stockage local:", e);
+                }
+            }
+        };
+
+        // Données initiales du système
+        const initialData = {
+            users: {
+                "jima.bouguern": { password: "jima.bouguern", type: "student", name: "Jima Bouguern", level: "Première Année" },
+                "sira.bouguern": { password: "sira.bouguern", type: "student", name: "Sira Bouguern", level: "Deuxième Année" },
+                "guiba.bouguern": { password: "guiba.bouguern", type: "student", name: "Guiba Bouguern", level: "Troisième Année" },
+                "setif.bouguern": { password: "setif.bouguern", type: "student", name: "Setif Bouguern", level: "Première Année" },
+                "s.gharabia": { password: "s.gharabia", type: "student", name: "S. Gharabia", level: "Deuxième Année" },
+                "ali.benoud": { password: "ali.benoud", type: "student", name: "Ali Benoud", level: "Troisième Année" },
+                "n.boutram": { password: "n.boutram", type: "student", name: "N. Boutram", level: "Deuxième Année" },
+                "k.bashih": { password: "k.bashih", type: "student", name: "K. Bashih", level: "Première Année" },
+                "prof.arabe": { password: "prof.arabe", type: "teacher", name: "Prof d'Arabe", teachingRole: "directed", subjects: ["Arabe"] },
+                "prof.arabe.tp": { password: "prof.arabe.tp", type: "teacher", name: "Prof d'Arabe (TP)", teachingRole: "practical", subjects: ["Arabe"] },
+                "prof.arabe.exam": { password: "prof.arabe.exam", type: "teacher", name: "Prof d'Arabe (Examen)", teachingRole: "exam", subjects: ["Arabe"] },
+                "prof.math": { password: "prof.math", type: "teacher", name: "Prof de Mathématiques", teachingRole: "directed", subjects: ["Mathématiques"] },
+                "prof.math.tp": { password: "prof.math.tp", type: "teacher", name: "Prof de Mathématiques (TP)", teachingRole: "practical", subjects: ["Mathématiques"] },
+                "admin": { password: "admin", type: "admin", name: "Directeur" }
+            },
+            subjectTeachers: {
+                "Arabe": {
+                    directed: "prof.arabe",
+                    practical: "prof.arabe.tp",
+                    exam: "prof.arabe.exam"
+                },
+                "Mathématiques": {
+                    directed: "prof.math",
+                    practical: "prof.math.tp",
+                    exam: "prof.math"
+                }
+            },
+            subjects: {
+                "Arabe": { coefficient: 3, hasDirected: true, hasPractical: true, hasExam: true },
+                "Islamique": { coefficient: 2, hasDirected: true, hasPractical: false, hasExam: true },
+                "Mathématiques": { coefficient: 6, hasDirected: true, hasPractical: true, hasExam: true },
+                "Anglais": { coefficient: 2, hasDirected: true, hasPractical: true, hasExam: true },
+                "Sciences": { coefficient: 5, hasDirected: true, hasPractical: true, hasExam: true },
+                "Français": { coefficient: 2, hasDirected: true, hasPractical: true, hasExam: true },
+                "Sciences Sociales": { coefficient: 2, hasDirected: true, hasPractical: false, hasExam: true },
+                "Physique": { coefficient: 5, hasDirected: true, hasPractical: true, hasExam: true },
+                "Philosophie": { coefficient: 2, hasDirected: true, hasPractical: false, hasExam: true },
+                "Statistiques": { coefficient: 4, hasDirected: true, hasPractical: true, hasExam: true },
+                "Sport": { coefficient: 1, hasDirected: false, hasPractical: true, hasExam: false }
+            },
+            grades: {
+                "jima.bouguern": {
+                    "Arabe": { directed: 12, practical: 14, exam: 16 },
+                    "Islamique": { directed: 15, exam: 13 },
+                    "Mathématiques": { directed: 8, practical: 10, exam: 9 },
+                    "Anglais": { directed: 14, practical: 16, exam: 15 },
+                    "Sciences": { directed: 10, practical: 12, exam: 11 },
+                    "Français": { directed: 9, practical: 11, exam: 10 }
+                },
+                "sira.bouguern": {
+                    "Arabe": { directed: 14, practical: 16, exam: 18 },
+                    "Islamique": { directed: 17, exam: 16 },
+                    "Mathématiques": { directed: 18, practical: 16, exam: 19 }
+                }
+            },
+            comments: {
+                "jima.bouguern": "Bon élève, doit améliorer sa présence",
+                "sira.bouguern": "Excellente élève, active en classe"
+            },
+            timetables: {
+                "Première Année": [
+                    { day: "Lundi", slots: [
+                        { time: "08:00-09:30", subject: "Arabe", room: "A101", type: "Cours" },
+                        { time: "09:45-11:15", subject: "Mathématiques", room: "B201", type: "TD" },
+                        { time: "11:30-13:00", subject: "Sciences", room: "C305", type: "TP" }
+                    ]},
+                    { day: "Mardi", slots: [
+                        { time: "08:00-09:30", subject: "Physique", room: "A201", type: "Cours" },
+                        { time: "09:45-11:15", subject: "Anglais", room: "B101", type: "TD" },
+                        { time: "11:30-13:00", subject: "Français", room: "C205", type: "TP" }
+                    ]}
+                ],
+                "Deuxième Année": [
+                    { day: "Lundi", slots: [
+                        { time: "08:00-09:30", subject: "Mathématiques", room: "A203", type: "Cours" },
+                        { time: "09:45-11:15", subject: "Arabe", room: "B102", type: "TD" },
+                        { time: "11:30-13:00", subject: "Philosophie", room: "C101", type: "Cours" }
+                    ]},
+                    { day: "Mardi", slots: [
+                        { time: "08:00-09:30", subject: "Physique", room: "A201", type: "TP" },
+                        { time: "09:45-11:15", subject: "Statistiques", room: "B205", type: "TD" },
+                        { time: "11:30-13:00", subject: "Anglais", room: "C102", type: "Cours" }
+                    ]}
+                ]
+            },
+            examSchedule: {
+                "Première Année": [
+                    { subject: "Arabe", date: "2023-12-15", time: "09:00-11:00", room: "A101" },
+                    { subject: "Mathématiques", date: "2023-12-16", time: "09:00-11:00", room: "B201" },
+                    { subject: "Sciences", date: "2023-12-17", time: "09:00-11:00", room: "C101" },
+                    { subject: "Anglais", date: "2023-12-18", time: "09:00-11:00", room: "D101" }
+                ],
+                "Deuxième Année": [
+                    { subject: "Physique", date: "2023-12-15", time: "09:00-11:00", room: "A201" },
+                    { subject: "Statistiques", date: "2023-12-16", time: "09:00-11:00", room: "B205" },
+                    { subject: "Français", date: "2023-12-17", time: "09:00-11:00", room: "C201" },
+                    { subject: "Philosophie", date: "2023-12-18", time: "09:00-11:00", room: "D201" }
+                ]
+            },
+            appeals: {
+                "prof.arabe": [
+                    { student: "jima.bouguern", subject: "Arabe", exam: true, grade: 16, message: "Je pense que ma réponse à la 3ème question était correcte" }
+                ]
+            }
+        };
+
+        // Initialisation des données dans le localStorage s'il n'existe pas déjà
+        document.addEventListener('DOMContentLoaded', function() {
+            for (const key in initialData) {
+                if (!appStorage.getItem(key)) {
+                    appStorage.setItem(key, JSON.stringify(initialData[key]));
+                }
+            }
+        });
+    </script>
+
+    <!-- Interface de connexion -->
+    <div id="login-container" class="container mx-auto p-4 max-w-md">
+        <div class="flex flex-col items-center bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mt-10">
+            <h1 class="text-2xl font-bold text-primary mb-6">Plateforme Éducative Intégrée</h1>
+            <div class="w-full">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Nom d'utilisateur</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Mot de passe</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <button id="login-btn" class="w-full bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Se connecter</button>
+                <div id="login-error" class="text-danger mt-2 text-center hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface étudiant -->
+    <div id="student-dashboard" class="container mx-auto p-4 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 id="student-name" class="text-2xl font-bold text-primary"></h1>
+            <button id="logout-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Déconnexion</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div id="continuous-assessment-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-clipboard-check text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Évaluation Continue</h2>
+            </div>
+            <div id="exams-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-file-alt text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Examens</h2>
+            </div>
+            <div id="transcript-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-chart-bar text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Relevé de Notes</h2>
+            </div>
+            <div id="status-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-user-graduate text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Statut Scolaire</h2>
+            </div>
+        </div>
+
+        <div id="content-area" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div id="welcome-content" class="text-center">
+                <h2 class="text-2xl font-bold mb-4">Bienvenue sur la Plateforme Éducative</h2>
+                <p class="text-gray-600 dark:text-gray-400">Choisissez une option ci-dessus pour commencer</p>
+            </div>
+            <div id="continuous-assessment-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Évaluation Continue</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Matière</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Travaux Dirigés</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Travaux Pratiques</th>
+                            </tr>
+                        </thead>
+                        <tbody id="continuous-assessment-table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="exams-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Examens</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Matière</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Note d'Examen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exams-table"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="transcript-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Relevé de Notes</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Matière</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Coefficient</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Note Finale</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Crédits</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transcript-table"></tbody>
+                    </table>
+                    <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <h3 class="text-xl font-bold mb-2">Moyenne Générale:</h3>
+                        <div id="overall-average" class="text-2xl font-bold text-primary"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="status-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Statut Scolaire</h2>
+                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                    <h3 class="text-lg font-bold mb-2">Commentaire de l'Administration:</h3>
+                    <div id="admin-comment" class="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"></div>
+                </div>
+            </div>
+            <div id="schedule-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Emploi du Temps</h2>
+                <div id="timetable-content" class="shadow-md rounded-lg overflow-hidden"></div>
+            </div>
+            <div id="exam-schedule-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Calendrier des Examens</h2>
+                <div id="exam-schedule-table-content" class="shadow-md rounded-lg overflow-hidden"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div id="schedule-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-calendar-alt text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Emploi du Temps</h2>
+            </div>
+            <div id="exam-schedule-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-calendar-check text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Calendrier des Examens</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface professeur -->
+    <div id="teacher-dashboard" class="container mx-auto p-4 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 id="teacher-name" class="text-2xl font-bold text-primary"></h1>
+            <button id="teacher-logout-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Déconnexion</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div id="enter-grades-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-pen-alt text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Saisir les Notes</h2>
+            </div>
+            <div id="view-appeals-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-comment-dots text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Voir les Réclamations</h2>
+            </div>
+            <div id="export-grades-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-file-export text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Exporter les Notes</h2>
+            </div>
+        </div>
+
+        <div id="teacher-content-area" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div id="teacher-welcome-content" class="text-center">
+                <h2 class="text-2xl font-bold mb-4">Bienvenue sur l'Interface Professeur</h2>
+                <p class="text-gray-600 dark:text-gray-400">Choisissez une option ci-dessus pour commencer</p>
+            </div>
+            <div id="enter-grades-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Saisir les Notes</h2>
+                <div class="mb-4">
+                    <label for="grade-subject" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Choisir la matière</label>
+                    <select id="grade-subject" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"></select>
+                </div>
+                <div class="mb-4">
+                    <label for="grade-type" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Type d'évaluation</label>
+                    <select id="grade-type" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="directed">Travaux Dirigés</option>
+                        <option value="practical">Travaux Pratiques</option>
+                        <option value="exam">Examen</option>
+                    </select>
+                </div>
+                <div class="flex justify-between mb-4">
+                    <button id="import-excel-btn" class="bg-info hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition flex items-center">
+                        <i class="fas fa-file-import mr-2"></i> Importer depuis Excel
+                    </button>
+                    <input type="file" id="excel-import" class="hidden" accept=".xlsx, .xls, .csv">
+                </div>
+                <div class="overflow-x-auto mt-4">
+                    <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Étudiant</th>
+                                <th class="py-3 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-left">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-grades-table"></tbody>
+                    </table>
+                </div>
+                <button id="save-grades-btn" class="mt-4 bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Enregistrer les Notes</button>
+            </div>
+            <div id="view-appeals-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Réclamations Soumises</h2>
+                <div id="appeals-list" class="space-y-4"></div>
+            </div>
+            <div id="export-grades-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Exporter les Notes</h2>
+                <div class="mb-4">
+                    <label for="export-subject" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Choisir la matière</label>
+                    <select id="export-subject" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"></select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="export-excel-btn" class="bg-success hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition flex items-center justify-center">
+                        <i class="fas fa-file-excel mr-2"></i> Exporter en Excel
+                    </button>
+                    <button id="export-csv-btn" class="bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition flex items-center justify-center">
+                        <i class="fas fa-file-csv mr-2"></i> Exporter en CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface administrateur -->
+    <div id="admin-dashboard" class="container mx-auto p-4 hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-primary">Panneau d'Administration</h1>
+            <button id="admin-logout-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Déconnexion</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div id="add-user-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-user-plus text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Ajouter Utilisateur</h2>
+            </div>
+            <div id="manage-teachers-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-chalkboard-teacher text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Gérer Professeurs</h2>
+            </div>
+            <div id="manage-schedule-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-calendar-alt text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Gérer Emplois du Temps</h2>
+            </div>
+            <div id="manage-comments-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-comment-alt text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Gérer Commentaires</h2>
+            </div>
+            <div id="final-report-icon" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition flex flex-col items-center justify-center">
+                <i class="fas fa-file-pdf text-3xl text-primary mb-2"></i>
+                <h2 class="text-lg font-bold">Rapport Final</h2>
+            </div>
+        </div>
+
+        <div id="admin-content-area" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div id="admin-welcome-content" class="text-center">
+                <h2 class="text-2xl font-bold mb-4">Bienvenue sur le Panneau d'Administration</h2>
+                <p class="text-gray-600 dark:text-gray-400">Choisissez une option ci-dessus pour commencer</p>
+            </div>
+            <div id="add-user-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Ajouter un nouvel utilisateur</h2>
+                <div class="mb-4">
+                    <label for="new-username" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Nom d'utilisateur</label>
+                    <input type="text" id="new-username" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label for="new-password" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Mot de passe</label>
+                    <input type="password" id="new-password" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label for="new-name" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Nom Complet</label>
+                    <input type="text" id="new-name" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="mb-4">
+                    <label for="new-type" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Type d'utilisateur</label>
+                    <select id="new-type" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="student">Étudiant</option>
+                        <option value="teacher">Professeur</option>
+                    </select>
+                </div>
+                <div id="student-fields" class="mb-4">
+                    <label for="new-level" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Niveau</label>
+                    <select id="new-level" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="Première Année">Première Année</option>
+                        <option value="Deuxième Année">Deuxième Année</option>
+                        <option value="Troisième Année">Troisième Année</option>
+                    </select>
+                </div>
+                <div id="teacher-fields" class="mb-4 hidden">
+                    <label for="teaching-role" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Rôle d'enseignement</label>
+                    <select id="teaching-role" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary mb-4">
+                        <option value="directed">Professeur des Travaux Dirigés</option>
+                        <option value="practical">Professeur des Travaux Pratiques</option>
+                        <option value="exam">Professeur d'Examen</option>
+                    </select>
+                    <label class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Matières</label>
+                    <div id="subjects-checkboxes" class="grid grid-cols-2 md:grid-cols-3 gap-2"></div>
+                </div>
+                <button id="add-user-btn" class="mt-4 bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Ajouter l'utilisateur</button>
+                <div id="add-user-result" class="mt-3 text-center"></div>
+            </div>
+            <div id="manage-teachers-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Gérer les Affectations des Professeurs</h2>
+                <div class="mb-4">
+                    <label for="teacher-subject" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Choisir la matière</label>
+                    <select id="teacher-subject" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="mb-4">
+                        <label for="directed-teacher" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Professeur des Travaux Dirigés</label>
+                        <select id="directed-teacher" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Aucun</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="practical-teacher" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Professeur des Travaux Pratiques</label>
+                        <select id="practical-teacher" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Aucun</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="exam-teacher" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Professeur d'Examen</label>
+                        <select id="exam-teacher" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Aucun</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="save-teacher-assignments-btn" class="mt-4 bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Enregistrer les Affectations</button>
+            </div>
+            <div id="manage-schedule-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Gérer les Emplois du Temps</h2>
+                <div class="mb-4">
+                    <label for="schedule-level" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Niveau</label>
+                    <select id="schedule-level" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="Première Année">Première Année</option>
+                        <option value="Deuxième Année">Deuxième Année</option>
+                        <option value="Troisième Année">Troisième Année</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="schedule-type" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Type d'emploi du temps</label>
+                    <select id="schedule-type" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="timetable">Emploi du Temps</option>
+                        <option value="exam">Calendrier des Examens</option>
+                    </select>
+                </div>
+                <div id="timetable-editor" class="mb-4">
+                    <h3 class="text-lg font-bold mb-2">Modifier l'emploi du temps:</h3>
+                    <div id="timetable-days"></div>
+                    <button id="add-day-btn" class="mt-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg focus:outline-none transition text-sm">Ajouter un Jour</button>
+                </div>
+                <div id="exam-schedule-editor" class="mb-4 hidden">
+                    <h3 class="text-lg font-bold mb-2">Modifier le calendrier des examens:</h3>
+                    <div id="exam-schedule-items"></div>
+                    <button id="add-exam-btn" class="mt-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg focus:outline-none transition text-sm">Ajouter un Examen</button>
+                </div>
+                <button id="save-schedule-btn" class="mt-4 bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Enregistrer l'Emploi du Temps</button>
+            </div>
+            <div id="manage-comments-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Gérer les Commentaires des Étudiants</h2>
+                <div class="mb-4">
+                    <label for="comment-student" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Choisir l'étudiant</label>
+                    <select id="comment-student" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"></select>
+                </div>
+                <div class="mb-4">
+                    <label for="student-comment" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Commentaire</label>
+                    <textarea id="student-comment" rows="4" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                </div>
+                <button id="save-comment-btn" class="mt-2 bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Enregistrer le Commentaire</button>
+            </div>
+            <div id="final-report-content" class="hidden">
+                <h2 class="text-2xl font-bold mb-4">Rapport Final des Notes</h2>
+                <div class="mb-4">
+                    <label for="report-level" class="block text-gray-700 dark:text-gray-300 font-medium mb-2">Niveau</label>
+                    <select id="report-level" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="Première Année">Première Année</option>
+                        <option value="Deuxième Année">Deuxième Année</option>
+                        <option value="Troisième Année">Troisième Année</option>
+                    </select>
+                </div>
+                <button id="generate-report-btn" class="bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Générer le Rapport</button>
+                <div id="report-preview" class="mt-4 hidden">
+                    <h3 class="text-xl font-bold mb-3">Aperçu du Rapport</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg">
+                            <thead id="report-header">
+                            </thead>
+                            <tbody id="report-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="export-report-btn" class="mt-4 bg-success hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Exporter en Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boîtes de dialogue -->
+    <div id="appeal-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <h2 class="text-xl font-bold mb-4">Soumettre une Réclamation</h2>
+            <p class="mb-4"><span id="appeal-subject-text"></span> - <span id="appeal-type-text"></span></p>
+            <textarea id="appeal-text" rows="4" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary mb-4" placeholder="Écrivez la raison de votre réclamation ici..."></textarea>
+            <div class="flex justify-end">
+                <button id="cancel-appeal-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition mr-2">Annuler</button>
+                <button id="submit-appeal-btn" class="bg-primary hover:bg-opacity-90 text-white font-bold py-2 px-4 rounded-lg focus:outline-none transition">Soumettre</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentUser = null;
+        let currentSubject = "";
+        let currentAppealType = "";
+        let currentAppealGrade = 0;
+
+        // Initialisation de l'interface
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestion de la connexion
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            
+            // Gestion de la déconnexion
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('teacher-logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('admin-logout-btn').addEventListener('click', handleLogout);
+            
+            // Gestion des icônes de l'interface étudiant
+            document.getElementById('continuous-assessment-icon').addEventListener('click', () => showStudentContent('continuous-assessment'));
+            document.getElementById('exams-icon').addEventListener('click', () => showStudentContent('exams'));
+            document.getElementById('transcript-icon').addEventListener('click', () => showStudentContent('transcript'));
+            document.getElementById('status-icon').addEventListener('click', () => showStudentContent('status'));
+            document.getElementById('schedule-icon').addEventListener('click', () => showStudentContent('schedule'));
+            document.getElementById('exam-schedule-icon').addEventListener('click', () => showStudentContent('exam-schedule'));
+            
+            // Gestion des icônes de l'interface professeur
+            document.getElementById('enter-grades-icon').addEventListener('click', () => showTeacherContent('enter-grades'));
+            document.getElementById('view-appeals-icon').addEventListener('click', () => showTeacherContent('view-appeals'));
+            document.getElementById('export-grades-icon').addEventListener('click', () => showTeacherContent('export-grades'));
+            
+            // Gestion des icônes de l'interface administrateur
+            document.getElementById('add-user-icon').addEventListener('click', () => showAdminContent('add-user'));
+            document.getElementById('manage-teachers-icon').addEventListener('click', () => showAdminContent('manage-teachers'));
+            document.getElementById('manage-schedule-icon').addEventListener('click', () => showAdminContent('manage-schedule'));
+            document.getElementById('manage-comments-icon').addEventListener('click', () => showAdminContent('manage-comments'));
+            document.getElementById('final-report-icon').addEventListener('click', () => showAdminContent('final-report'));
+            
+            // Gestion du type d'utilisateur
+            document.getElementById('new-type').addEventListener('change', function() {
+                if (this.value === 'student') {
+                    document.getElementById('student-fields').classList.remove('hidden');
+                    document.getElementById('teacher-fields').classList.add('hidden');
+                } else {
+                    document.getElementById('student-fields').classList.add('hidden');
+                    document.getElementById('teacher-fields').classList.remove('hidden');
+                }
+            });
+            
+            // Gestion du type d'emploi du temps
+            document.getElementById('schedule-type').addEventListener('change', function() {
+                if (this.value === 'timetable') {
+                    document.getElementById('timetable-editor').classList.remove('hidden');
+                    document.getElementById('exam-schedule-editor').classList.add('hidden');
+                } else {
+                    document.getElementById('timetable-editor').classList.add('hidden');
+                    document.getElementById('exam-schedule-editor').classList.remove('hidden');
+                }
+            });
+            
+            // Gestion de l'ajout d'utilisateur
+            document.getElementById('add-user-btn').addEventListener('click', addUser);
+            
+            // Gestion des affectations des professeurs
+            document.getElementById('teacher-subject').addEventListener('change', loadTeacherAssignments);
+            document.getElementById('save-teacher-assignments-btn').addEventListener('click', saveTeacherAssignments);
+            
+            // Gestion de la modification des emplois du temps
+            document.getElementById('schedule-level').addEventListener('change', loadScheduleData);
+            document.getElementById('schedule-type').addEventListener('change', loadScheduleData);
+            document.getElementById('add-day-btn').addEventListener('click', addTimetableDay);
+            document.getElementById('add-exam-btn').addEventListener('click', addExamScheduleItem);
+            document.getElementById('save-schedule-btn').addEventListener('click', saveSchedule);
+            
+            // Gestion des commentaires
+            document.getElementById('save-comment-btn').addEventListener('click', saveComment);
+            
+            // Gestion des notes pour le professeur
+            document.getElementById('grade-subject').addEventListener('change', populateStudentGradesTable);
+            document.getElementById('grade-type').addEventListener('change', populateStudentGradesTable);
+            document.getElementById('save-grades-btn').addEventListener('click', saveGrades);
+            
+            // Gestion de l'importation/exportation des notes
+            document.getElementById('import-excel-btn').addEventListener('click', function() {
+                document.getElementById('excel-import').click();
+            });
+            document.getElementById('excel-import').addEventListener('change', importGradesFromExcel);
+            document.getElementById('export-excel-btn').addEventListener('click', exportGradesToExcel);
+            document.getElementById('export-csv-btn').addEventListener('click', exportGradesToCSV);
+            
+            // Gestion du rapport final
+            document.getElementById('report-level').addEventListener('change', function() {
+                document.getElementById('report-preview').classList.add('hidden');
+            });
+            document.getElementById('generate-report-btn').addEventListener('click', generateFinalReport);
+            document.getElementById('export-report-btn').addEventListener('click', exportFinalReport);
+            
+            // Gestion des boîtes de dialogue
+            document.getElementById('cancel-appeal-btn').addEventListener('click', closeAppealModal);
+            document.getElementById('submit-appeal-btn').addEventListener('click', submitAppeal);
+            
+            // Initialisation des cases à cocher pour les matières
+            initializeSubjectsCheckboxes();
+        });
+
+        // Connexion
+        function handleLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const error = document.getElementById('login-error');
+            
+            if (!username || !password) {
+                error.textContent = 'Veuillez entrer un nom d\'utilisateur et un mot de passe';
+                error.classList.remove('hidden');
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const user = users[username];
+            
+            if (!user || user.password !== password) {
+                error.textContent = 'Nom d\'utilisateur ou mot de passe incorrect';
+                error.classList.remove('hidden');
+                return;
+            }
+            
+            currentUser = {
+                username: username,
+                ...user
+            };
+            
+            error.classList.add('hidden');
+            showDashboard(user.type);
+        }
+
+        // Déconnexion
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('student-dashboard').classList.add('hidden');
+            document.getElementById('teacher-dashboard').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        // Afficher le tableau de bord approprié
+        function showDashboard(type) {
+            document.getElementById('login-container').classList.add('hidden');
+            
+            if (type === 'student') {
+                document.getElementById('student-dashboard').classList.remove('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                document.getElementById('student-name').textContent = `Bienvenue ${currentUser.name}`;
+                showStudentContent('welcome');
+            } else if (type === 'teacher') {
+                document.getElementById('student-dashboard').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('hidden');
+                document.getElementById('admin-dashboard').classList.add('hidden');
+                document.getElementById('teacher-name').textContent = `Bienvenue ${currentUser.name}`;
+                initializeTeacherSubjects();
+                showTeacherContent('welcome');
+            } else if (type === 'admin') {
+                document.getElementById('student-dashboard').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+                initializeAdminDashboard();
+                showAdminContent('welcome');
+            }
+        }
+
+        // Afficher le contenu étudiant
+        function showStudentContent(contentType) {
+            const contentIds = ['welcome-content', 'continuous-assessment-content', 'exams-content', 'transcript-content', 'status-content', 'schedule-content', 'exam-schedule-content'];
+            contentIds.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            
+            if (contentType === 'welcome') {
+                document.getElementById('welcome-content').classList.remove('hidden');
+            } else if (contentType === 'continuous-assessment') {
+                document.getElementById('continuous-assessment-content').classList.remove('hidden');
+                populateContinuousAssessment();
+            } else if (contentType === 'exams') {
+                document.getElementById('exams-content').classList.remove('hidden');
+                populateExams();
+            } else if (contentType === 'transcript') {
+                document.getElementById('transcript-content').classList.remove('hidden');
+                populateTranscript();
+            } else if (contentType === 'status') {
+                document.getElementById('status-content').classList.remove('hidden');
+                populateStatus();
+            } else if (contentType === 'schedule') {
+                document.getElementById('schedule-content').classList.remove('hidden');
+                populateSchedule();
+            } else if (contentType === 'exam-schedule') {
+                document.getElementById('exam-schedule-content').classList.remove('hidden');
+                populateExamSchedule();
+            }
+        }
+
+        // Afficher le contenu professeur
+        function showTeacherContent(contentType) {
+            const contentIds = ['teacher-welcome-content', 'enter-grades-content', 'view-appeals-content', 'export-grades-content'];
+            contentIds.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            
+            if (contentType === 'welcome') {
+                document.getElementById('teacher-welcome-content').classList.remove('hidden');
+            } else if (contentType === 'enter-grades') {
+                document.getElementById('enter-grades-content').classList.remove('hidden');
+                populateStudentGradesTable();
+            } else if (contentType === 'view-appeals') {
+                document.getElementById('view-appeals-content').classList.remove('hidden');
+                populateAppeals();
+            } else if (contentType === 'export-grades') {
+                document.getElementById('export-grades-content').classList.remove('hidden');
+            }
+        }
+
+        // Afficher le contenu administrateur
+        function showAdminContent(contentType) {
+            const contentIds = ['admin-welcome-content', 'add-user-content', 'manage-teachers-content', 'manage-schedule-content', 'manage-comments-content', 'final-report-content'];
+            contentIds.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            
+            if (contentType === 'welcome') {
+                document.getElementById('admin-welcome-content').classList.remove('hidden');
+            } else if (contentType === 'add-user') {
+                document.getElementById('add-user-content').classList.remove('hidden');
+            } else if (contentType === 'manage-teachers') {
+                document.getElementById('manage-teachers-content').classList.remove('hidden');
+                initializeSubjectSelect();
+                loadTeacherAssignments();
+            } else if (contentType === 'manage-schedule') {
+                document.getElementById('manage-schedule-content').classList.remove('hidden');
+                loadScheduleData();
+            } else if (contentType === 'manage-comments') {
+                document.getElementById('manage-comments-content').classList.remove('hidden');
+                populateStudentsForComments();
+            } else if (contentType === 'final-report') {
+                document.getElementById('final-report-content').classList.remove('hidden');
+                document.getElementById('report-preview').classList.add('hidden');
+            }
+        }
+
+        // Initialiser les matières pour le professeur
+        function initializeTeacherSubjects() {
+            const subjectSelect = document.getElementById('grade-subject');
+            const exportSubjectSelect = document.getElementById('export-subject');
+            subjectSelect.innerHTML = '';
+            exportSubjectSelect.innerHTML = '';
+            
+            // Obtenir les matières assignées selon le rôle d'enseignement
+            const subjectTeachers = JSON.parse(appStorage.getItem('subjectTeachers')) || {};
+            const subjects = JSON.parse(appStorage.getItem('subjects')) || {};
+            
+            // Filtrer les matières où ce professeur est assigné
+            const assignedSubjects = [];
+            for (const subject in subjectTeachers) {
+                const teachers = subjectTeachers[subject];
+                if (teachers.directed === currentUser.username || 
+                    teachers.practical === currentUser.username || 
+                    teachers.exam === currentUser.username) {
+                    assignedSubjects.push(subject);
+                }
+            }
+            
+            // Si aucune matière n'est assignée spécifiquement, utiliser les matières du profil
+            const teacherSubjects = assignedSubjects.length > 0 ? assignedSubjects : currentUser.subjects;
+            
+            teacherSubjects.forEach(subject => {
+                // Pour le sélecteur de saisie des notes
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectSelect.appendChild(option);
+                
+                // Pour le sélecteur d'exportation
+                const exportOption = document.createElement('option');
+                exportOption.value = subject;
+                exportOption.textContent = subject;
+                exportSubjectSelect.appendChild(exportOption);
+            });
+            
+            if (teacherSubjects.length > 0) {
+                // Activer uniquement les types d'évaluation appropriés pour ce professeur
+                updateGradeTypeOptions();
+                populateStudentGradesTable();
+            }
+        }
+
+        // Mettre à jour les options du type d'évaluation selon le rôle du professeur
+        function updateGradeTypeOptions() {
+            const subject = document.getElementById('grade-subject').value;
+            const gradeTypeSelect = document.getElementById('grade-type');
+            
+            if (!subject) return;
+            
+            const subjectTeachers = JSON.parse(appStorage.getItem('subjectTeachers')) || {};
+            const subjects = JSON.parse(appStorage.getItem('subjects')) || {};
+            
+            // Réinitialiser les options
+            gradeTypeSelect.innerHTML = '';
+            
+            // Vérifier le rôle du professeur pour cette matière
+            if (subjectTeachers[subject]) {
+                // Si le professeur est assigné spécifiquement
+                if (subjectTeachers[subject].directed === currentUser.username && subjects[subject].hasDirected) {
+                    const option = document.createElement('option');
+                    option.value = 'directed';
+                    option.textContent = 'Travaux Dirigés';
+                    gradeTypeSelect.appendChild(option);
+                }
+                
+                if (subjectTeachers[subject].practical === currentUser.username && subjects[subject].hasPractical) {
+                    const option = document.createElement('option');
+                    option.value = 'practical';
+                    option.textContent = 'Travaux Pratiques';
+                    gradeTypeSelect.appendChild(option);
+                }
+                
+                if (subjectTeachers[subject].exam === currentUser.username && subjects[subject].hasExam) {
+                    const option = document.createElement('option');
+                    option.value = 'exam';
+                    option.textContent = 'Examen';
+                    gradeTypeSelect.appendChild(option);
+                }
+            } else {
+                // Si pas d'assignation spécifique, utiliser le rôle général
+                if (currentUser.teachingRole === 'directed' && subjects[subject].hasDirected) {
+                    const option = document.createElement('option');
+                    option.value = 'directed';
+                    option.textContent = 'Travaux Dirigés';
+                    gradeTypeSelect.appendChild(option);
+                } else if (currentUser.teachingRole === 'practical' && subjects[subject].hasPractical) {
+                    const option = document.createElement('option');
+                    option.value = 'practical';
+                    option.textContent = 'Travaux Pratiques';
+                    gradeTypeSelect.appendChild(option);
+                } else if (currentUser.teachingRole === 'exam' && subjects[subject].hasExam) {
+                    const option = document.createElement('option');
+                    option.value = 'exam';
+                    option.textContent = 'Examen';
+                    gradeTypeSelect.appendChild(option);
+                } else {
+                    // Afficher toutes les options disponibles
+                    if (subjects[subject].hasDirected) {
+                        const option = document.createElement('option');
+                        option.value = 'directed';
+                        option.textContent = 'Travaux Dirigés';
+                        gradeTypeSelect.appendChild(option);
+                    }
+                    
+                    if (subjects[subject].hasPractical) {
+                        const option = document.createElement('option');
+                        option.value = 'practical';
+                        option.textContent = 'Travaux Pratiques';
+                        gradeTypeSelect.appendChild(option);
+                    }
+                    
+                    if (subjects[subject].hasExam) {
+                        const option = document.createElement('option');
+                        option.value = 'exam';
+                        option.textContent = 'Examen';
+                        gradeTypeSelect.appendChild(option);
+                    }
+                }
+            }
+            
+            // S'il n'y a aucune option, ajouter un message
+            if (gradeTypeSelect.options.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Aucun type d\'évaluation disponible';
+                gradeTypeSelect.appendChild(option);
+            }
+        }
+
+        // Initialiser le sélecteur de matières pour l'administration
+        function initializeSubjectSelect() {
+            const subjectSelect = document.getElementById('teacher-subject');
+            subjectSelect.innerHTML = '';
+            
+            const subjects = JSON.parse(appStorage.getItem('subjects'));
+            
+            Object.keys(subjects).forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectSelect.appendChild(option);
+            });
+        }
+
+        // Initialiser les cases à cocher des matières
+        function initializeSubjectsCheckboxes() {
+            const container = document.getElementById('subjects-checkboxes');
+            const subjects = JSON.parse(appStorage.getItem('subjects'));
+            
+            container.innerHTML = '';
+            
+            Object.keys(subjects).forEach(subject => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `subject-${subject}`;
+                checkbox.name = 'subjects';
+                checkbox.value = subject;
+                checkbox.className = 'mr-2';
+                
+                const label = document.createElement('label');
+                label.htmlFor = `subject-${subject}`;
+                label.textContent = subject;
+                label.className = 'text-sm';
+                
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        // Initialiser le tableau de bord administrateur
+        function initializeAdminDashboard() {
+            populateStudentsForComments();
+            populateTeachersDropdowns();
+        }
+
+        // Peupler les listes déroulantes des professeurs
+        function populateTeachersDropdowns() {
+            const directedTeacherSelect = document.getElementById('directed-teacher');
+            const practicalTeacherSelect = document.getElementById('practical-teacher');
+            const examTeacherSelect = document.getElementById('exam-teacher');
+            
+            // Réinitialiser les sélecteurs
+            directedTeacherSelect.innerHTML = '<option value="">Aucun</option>';
+            practicalTeacherSelect.innerHTML = '<option value="">Aucun</option>';
+            examTeacherSelect.innerHTML = '<option value="">Aucun</option>';
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            
+            // Ajouter tous les professeurs
+            for (const username in users) {
+                if (users[username].type === 'teacher') {
+                    // Option pour le professeur des travaux dirigés
+                    const directedOption = document.createElement('option');
+                    directedOption.value = username;
+                    directedOption.textContent = users[username].name;
+                    directedTeacherSelect.appendChild(directedOption);
+                    
+                    // Option pour le professeur des travaux pratiques
+                    const practicalOption = document.createElement('option');
+                    practicalOption.value = username;
+                    practicalOption.textContent = users[username].name;
+                    practicalTeacherSelect.appendChild(practicalOption);
+                    
+                    // Option pour le professeur d'examen
+                    const examOption = document.createElement('option');
+                    examOption.value = username;
+                    examOption.textContent = users[username].name;
+                    examTeacherSelect.appendChild(examOption);
+                }
+            }
+        }
+
+        // Charger les affectations des professeurs
+        function loadTeacherAssignments() {
+            const subject = document.getElementById('teacher-subject').value;
+            
+            if (!subject) return;
+            
+            const subjectTeachers = JSON.parse(appStorage.getItem('subjectTeachers')) || {};
+            
+            // Réinitialiser les sélections
+            document.getElementById('directed-teacher').value = '';
+            document.getElementById('practical-teacher').value = '';
+            document.getElementById('exam-teacher').value = '';
+            
+            // Définir les valeurs actuelles si elles existent
+            if (subjectTeachers[subject]) {
+                if (subjectTeachers[subject].directed) {
+                    document.getElementById('directed-teacher').value = subjectTeachers[subject].directed;
+                }
+                
+                if (subjectTeachers[subject].practical) {
+                    document.getElementById('practical-teacher').value = subjectTeachers[subject].practical;
+                }
+                
+                if (subjectTeachers[subject].exam) {
+                    document.getElementById('exam-teacher').value = subjectTeachers[subject].exam;
+                }
+            }
+        }
+
+        // Enregistrer les affectations des professeurs
+        function saveTeacherAssignments() {
+            const subject = document.getElementById('teacher-subject').value;
+            
+            if (!subject) {
+                alert('Veuillez sélectionner une matière');
+                return;
+            }
+            
+            const directedTeacher = document.getElementById('directed-teacher').value;
+            const practicalTeacher = document.getElementById('practical-teacher').value;
+            const examTeacher = document.getElementById('exam-teacher').value;
+            
+            const subjectTeachers = JSON.parse(appStorage.getItem('subjectTeachers')) || {};
+            
+            // Mettre à jour les affectations
+            if (!subjectTeachers[subject]) {
+                subjectTeachers[subject] = {};
+            }
+            
+            subjectTeachers[subject].directed = directedTeacher;
+            subjectTeachers[subject].practical = practicalTeacher;
+            subjectTeachers[subject].exam = examTeacher;
+            
+            appStorage.setItem('subjectTeachers', JSON.stringify(subjectTeachers));
+            
+            alert('Affectations des professeurs enregistrées avec succès');
+        }
+
+        // Afficher l'évaluation continue pour l'étudiant
+        function populateContinuousAssessment() {
+            const table = document.getElementById('continuous-assessment-table');
+            table.innerHTML = '';
+            
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            const studentGrades = gradesData[currentUser.username] || {};
+            
+            Object.keys(subjectsData).forEach(subject => {
+                const subjectData = subjectsData[subject];
+                const studentSubjectGrades = studentGrades[subject] || {};
+                
+                if (subjectData.hasDirected || subjectData.hasPractical) {
+                    const row = document.createElement('tr');
+                    
+                    const subjectCell = document.createElement('td');
+                    subjectCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    subjectCell.textContent = subject;
+                    row.appendChild(subjectCell);
+                    
+                    const directedCell = document.createElement('td');
+                    directedCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    if (subjectData.hasDirected) {
+                        const directedGrade = studentSubjectGrades.directed;
+                        directedCell.textContent = directedGrade !== undefined ? directedGrade : '-';
+                        if (directedGrade !== undefined && directedGrade >= 10) {
+                            directedCell.classList.add('text-success');
+                        } else if (directedGrade !== undefined) {
+                            directedCell.classList.add('text-danger');
+                        }
+                        directedCell.addEventListener('dblclick', () => {
+                            if (directedGrade !== undefined) {
+                                showAppealModal(subject, 'Travaux Dirigés', directedGrade);
+                            }
+                        });
+                    } else {
+                        directedCell.textContent = 'Non disponible';
+                        directedCell.classList.add('text-gray-500');
+                    }
+                    row.appendChild(directedCell);
+                    
+                    const practicalCell = document.createElement('td');
+                    practicalCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    if (subjectData.hasPractical) {
+                        const practicalGrade = studentSubjectGrades.practical;
+                        practicalCell.textContent = practicalGrade !== undefined ? practicalGrade : '-';
+                        if (practicalGrade !== undefined && practicalGrade >= 10) {
+                            practicalCell.classList.add('text-success');
+                        } else if (practicalGrade !== undefined) {
+                            practicalCell.classList.add('text-danger');
+                        }
+                        practicalCell.addEventListener('dblclick', () => {
+                            if (practicalGrade !== undefined) {
+                                showAppealModal(subject, 'Travaux Pratiques', practicalGrade);
+                            }
+                        });
+                    } else {
+                        practicalCell.textContent = 'Non disponible';
+                        practicalCell.classList.add('text-gray-500');
+                    }
+                    row.appendChild(practicalCell);
+                    
+                    table.appendChild(row);
+                }
+            });
+        }
+
+        // Afficher les examens pour l'étudiant
+        function populateExams() {
+            const table = document.getElementById('exams-table');
+            table.innerHTML = '';
+            
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            const studentGrades = gradesData[currentUser.username] || {};
+            
+            Object.keys(subjectsData).forEach(subject => {
+                const subjectData = subjectsData[subject];
+                const studentSubjectGrades = studentGrades[subject] || {};
+                
+                if (subjectData.hasExam) {
+                    const row = document.createElement('tr');
+                    
+                    const subjectCell = document.createElement('td');
+                    subjectCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    subjectCell.textContent = subject;
+                    row.appendChild(subjectCell);
+                    
+                    const examCell = document.createElement('td');
+                    examCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    const examGrade = studentSubjectGrades.exam;
+                    examCell.textContent = examGrade !== undefined ? examGrade : '-';
+                    if (examGrade !== undefined && examGrade >= 10) {
+                        examCell.classList.add('text-success');
+                    } else if (examGrade !== undefined) {
+                        examCell.classList.add('text-danger');
+                    }
+                    examCell.addEventListener('dblclick', () => {
+                        if (examGrade !== undefined) {
+                            showAppealModal(subject, 'Examen', examGrade);
+                        }
+                    });
+                    row.appendChild(examCell);
+                    
+                    table.appendChild(row);
+                }
+            });
+        }
+
+        // Afficher le relevé de notes pour l'étudiant
+        function populateTranscript() {
+            const table = document.getElementById('transcript-table');
+            table.innerHTML = '';
+            
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            const studentGrades = gradesData[currentUser.username] || {};
+            
+            let totalWeightedGrade = 0;
+            let totalCoefficients = 0;
+            let completedSubjects = 0;
+            
+            Object.keys(subjectsData).forEach(subject => {
+                const subjectData = subjectsData[subject];
+                const studentSubjectGrades = studentGrades[subject] || {};
+                
+                if (Object.keys(studentSubjectGrades).length > 0) {
+                    completedSubjects++;
+                    
+                    const row = document.createElement('tr');
+                    
+                    const subjectCell = document.createElement('td');
+                    subjectCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    subjectCell.textContent = subject;
+                    row.appendChild(subjectCell);
+                    
+                    const coefficientCell = document.createElement('td');
+                    coefficientCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    coefficientCell.textContent = subjectData.coefficient;
+                    row.appendChild(coefficientCell);
+                    
+                    // Calculer la note finale
+                    const directedGrade = studentSubjectGrades.directed || 0;
+                    const practicalGrade = studentSubjectGrades.practical || 0;
+                    const examGrade = studentSubjectGrades.exam || 0;
+                    
+                    let finalGrade = 0;
+                    if (subjectData.hasDirected && subjectData.hasPractical && subjectData.hasExam) {
+                        finalGrade = directedGrade * 0.2 + practicalGrade * 0.2 + examGrade * 0.6;
+                    } else if (subjectData.hasDirected && subjectData.hasExam) {
+                        finalGrade = directedGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectData.hasPractical && subjectData.hasExam) {
+                        finalGrade = practicalGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectData.hasDirected && subjectData.hasPractical) {
+                        finalGrade = directedGrade * 0.5 + practicalGrade * 0.5;
+                    } else if (subjectData.hasDirected) {
+                        finalGrade = directedGrade;
+                    } else if (subjectData.hasPractical) {
+                        finalGrade = practicalGrade;
+                    } else if (subjectData.hasExam) {
+                        finalGrade = examGrade;
+                    }
+                    
+                    const finalGradeCell = document.createElement('td');
+                    finalGradeCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700 font-bold';
+                    finalGradeCell.textContent = finalGrade.toFixed(2);
+                    if (finalGrade >= 10) {
+                        finalGradeCell.classList.add('text-success');
+                    } else {
+                        finalGradeCell.classList.add('text-danger');
+                    }
+                    row.appendChild(finalGradeCell);
+                    
+                    const creditsCell = document.createElement('td');
+                    creditsCell.className = 'py-3 px-4 border-b border-gray-200 dark:border-gray-700';
+                    if (finalGrade >= 10) {
+                        creditsCell.textContent = subjectData.coefficient;
+                    } else {
+                        creditsCell.textContent = '0';
+                    }
+                    row.appendChild(creditsCell);
+                    
+                    table.appendChild(row);
+                    
+                    // Calculer la moyenne générale
+                    totalWeightedGrade += finalGrade * subjectData.coefficient;
+                    totalCoefficients += subjectData.coefficient;
+                }
+            });
+            
+            // Afficher la moyenne générale si au moins 6 matières
+            if (completedSubjects >= 6) {
+                const overallAverage = totalWeightedGrade / totalCoefficients;
+                const averageElement = document.getElementById('overall-average');
+                averageElement.textContent = overallAverage.toFixed(2);
+                if (overallAverage >= 10) {
+                    averageElement.classList.add('text-success');
+                    averageElement.classList.remove('text-danger');
+                } else {
+                    averageElement.classList.add('text-danger');
+                    averageElement.classList.remove('text-success');
+                }
+            } else {
+                document.getElementById('overall-average').textContent = 'Au moins 6 matières sont nécessaires pour calculer la moyenne';
+                document.getElementById('overall-average').classList.remove('text-success');
+                document.getElementById('overall-average').classList.remove('text-danger');
+            }
+        }
+
+        // Afficher le statut scolaire pour l'étudiant
+        function populateStatus() {
+            const commentsData = JSON.parse(appStorage.getItem('comments'));
+            const commentElement = document.getElementById('admin-comment');
+            
+            if (commentsData[currentUser.username]) {
+                commentElement.textContent = commentsData[currentUser.username];
+            } else {
+                commentElement.textContent = 'Pas de commentaire administratif pour le moment';
+            }
+        }
+
+        // Afficher l'emploi du temps pour l'étudiant
+        function populateSchedule() {
+            const timetableData = JSON.parse(appStorage.getItem('timetables'));
+            const container = document.getElementById('timetable-content');
+            container.innerHTML = '';
+            
+            const userLevel = currentUser.level;
+            const timetable = timetableData[userLevel];
+            
+            if (!timetable || timetable.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400">Aucun emploi du temps disponible actuellement</p>';
+                return;
+            }
+            
+            // Créer une table moderne pour l'emploi du temps
+            const table = document.createElement('table');
+            table.className = 'min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden';
+            
+            timetable.forEach(day => {
+                // Créer l'en-tête du jour
+                const header = document.createElement('tr');
+                header.className = 'bg-gray-100 dark:bg-gray-900';
+                
+                const headerCell = document.createElement('th');
+                headerCell.className = 'py-3 px-4 text-left font-bold text-primary text-lg';
+                headerCell.colSpan = 4;
+                headerCell.textContent = day.day;
+                header.appendChild(headerCell);
+                
+                table.appendChild(header);
+                
+                // Créer l'en-tête des colonnes
+                const columnHeader = document.createElement('tr');
+                columnHeader.className = 'bg-gray-50 dark:bg-gray-800';
+                
+                ['Horaire', 'Matière', 'Salle', 'Type'].forEach(text => {
+                    const th = document.createElement('th');
+                    th.className = 'py-2 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400';
+                    th.textContent = text;
+                    columnHeader.appendChild(th);
+                });
+                
+                table.appendChild(columnHeader);
+                
+                // Créer les lignes pour chaque créneau
+                day.slots.forEach(slot => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900';
+                    
+                    const timeCell = document.createElement('td');
+                    timeCell.className = 'py-3 px-4';
+                    timeCell.textContent = slot.time;
+                    row.appendChild(timeCell);
+                    
+                    const subjectCell = document.createElement('td');
+                    subjectCell.className = 'py-3 px-4 font-medium';
+                    subjectCell.textContent = slot.subject;
+                    row.appendChild(subjectCell);
+                    
+                    const roomCell = document.createElement('td');
+                    roomCell.className = 'py-3 px-4';
+                    roomCell.textContent = slot.room;
+                    row.appendChild(roomCell);
+                    
+                    const typeCell = document.createElement('td');
+                    typeCell.className = 'py-3 px-4';
+                    
+                    // Badge pour le type de cours
+                    const typeBadge = document.createElement('span');
+                    if (slot.type === 'Cours') {
+                        typeBadge.className = 'px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+                    } else if (slot.type === 'TD') {
+                        typeBadge.className = 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+                    } else if (slot.type === 'TP') {
+                        typeBadge.className = 'px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+                    } else {
+                        typeBadge.className = 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+                    }
+                    typeBadge.textContent = slot.type;
+                    typeCell.appendChild(typeBadge);
+                    
+                    row.appendChild(typeCell);
+                    
+                    table.appendChild(row);
+                });
+            });
+            
+            container.appendChild(table);
+        }
+
+        // Afficher le calendrier des examens pour l'étudiant
+        function populateExamSchedule() {
+            const examScheduleData = JSON.parse(appStorage.getItem('examSchedule'));
+            const container = document.getElementById('exam-schedule-table-content');
+            container.innerHTML = '';
+            
+            const userLevel = currentUser.level;
+            const examSchedule = examScheduleData[userLevel];
+            
+            if (!examSchedule || examSchedule.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400">Aucun calendrier d\'examens disponible actuellement</p>';
+                return;
+            }
+            
+            const table = document.createElement('table');
+            table.className = 'min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden';
+            
+            // En-tête du tableau
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'bg-gray-50 dark:bg-gray-900';
+            
+            ['Matière', 'Date', 'Horaire', 'Salle'].forEach(header => {
+                const th = document.createElement('th');
+                th.className = 'py-3 px-4 text-left font-medium text-gray-500 dark:text-gray-400';
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Corps du tableau
+            const tbody = document.createElement('tbody');
+            
+            examSchedule.forEach(exam => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900';
+                
+                const subjectCell = document.createElement('td');
+                subjectCell.className = 'py-3 px-4 font-medium';
+                subjectCell.textContent = exam.subject;
+                row.appendChild(subjectCell);
+                
+                const dateCell = document.createElement('td');
+                dateCell.className = 'py-3 px-4';
+                
+                // Formater la date pour l'affichage
+                const dateParts = exam.date.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                dateCell.textContent = formattedDate;
+                
+                row.appendChild(dateCell);
+                
+                const timeCell = document.createElement('td');
+                timeCell.className = 'py-3 px-4';
+                timeCell.textContent = exam.time;
+                row.appendChild(timeCell);
+                
+                const roomCell = document.createElement('td');
+                roomCell.className = 'py-3 px-4';
+                roomCell.textContent = exam.room;
+                row.appendChild(roomCell);
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            container.appendChild(table);
+        }
+
+        // Afficher le tableau des notes pour le professeur
+        function populateStudentGradesTable() {
+            const subject = document.getElementById('grade-subject').value;
+            const gradeType = document.getElementById('grade-type').value;
+            const table = document.getElementById('student-grades-table');
+            table.innerHTML = '';
+            
+            if (!subject || !gradeType) return;
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            
+            // Vérifier si ce type d'évaluation est disponible pour cette matière
+            if (
+                (gradeType === 'directed' && !subjectsData[subject].hasDirected) ||
+                (gradeType === 'practical' && !subjectsData[subject].hasPractical) ||
+                (gradeType === 'exam' && !subjectsData[subject].hasExam)
+            ) {
+                table.innerHTML = '<tr><td colspan="2" class="py-3 px-4 text-center text-gray-500">Ce type d\'évaluation n\'est pas disponible pour cette matière</td></tr>';
+                return;
+            }
+            
+            // Obtenir tous les étudiants
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student')
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700';
+                
+                const nameCell = document.createElement('td');
+                nameCell.className = 'py-3 px-4';
+                nameCell.textContent = student.name;
+                row.appendChild(nameCell);
+                
+                const gradeCell = document.createElement('td');
+                gradeCell.className = 'py-3 px-4';
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'w-20 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                input.min = 0;
+                input.max = 20;
+                input.step = 0.25;
+                input.dataset.username = student.username;
+                
+                if (gradesData[student.username] && gradesData[student.username][subject] && gradesData[student.username][subject][gradeType] !== undefined) {
+                    input.value = gradesData[student.username][subject][gradeType];
+                }
+                
+                gradeCell.appendChild(input);
+                row.appendChild(gradeCell);
+                
+                table.appendChild(row);
+            });
+        }
+
+        // Enregistrer les notes pour le professeur
+        function saveGrades() {
+            const subject = document.getElementById('grade-subject').value;
+            const gradeType = document.getElementById('grade-type').value;
+            const inputs = document.querySelectorAll('#student-grades-table input');
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            
+            inputs.forEach(input => {
+                const username = input.dataset.username;
+                const grade = parseFloat(input.value);
+                
+                if (!isNaN(grade)) {
+                    if (!gradesData[username]) {
+                        gradesData[username] = {};
+                    }
+                    
+                    if (!gradesData[username][subject]) {
+                        gradesData[username][subject] = {};
+                    }
+                    
+                    gradesData[username][subject][gradeType] = grade;
+                }
+            });
+            
+            appStorage.setItem('grades', JSON.stringify(gradesData));
+            
+            // Afficher un message de succès
+            alert('Notes enregistrées avec succès');
+        }
+
+        // Importer les notes depuis un fichier Excel
+        function importGradesFromExcel(e) {
+            const file = e.target.files[0];
+            
+            if (!file) return;
+            
+            const subject = document.getElementById('grade-subject').value;
+            const gradeType = document.getElementById('grade-type').value;
+            
+            if (!subject || !gradeType) {
+                alert('Veuillez sélectionner une matière et un type d\'évaluation');
+                return;
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Supposer que les données sont dans la première feuille
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    
+                    // Convertir en JSON
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    if (jsonData.length === 0) {
+                        alert('Aucune donnée trouvée dans le fichier');
+                        return;
+                    }
+                    
+                    // Vérifier les colonnes requises
+                    const firstRow = jsonData[0];
+                    if (!firstRow.Nom || !firstRow.Username || !firstRow.Note) {
+                        alert('Le fichier doit contenir des colonnes nommées "Nom", "Username" et "Note"');
+                        return;
+                    }
+                    
+                    // Mettre à jour les notes
+                    const gradesData = JSON.parse(appStorage.getItem('grades'));
+                    
+                    jsonData.forEach(row => {
+                        const username = row.Username;
+                        const grade = parseFloat(row.Note);
+                        
+                        if (!isNaN(grade) && username) {
+                            if (!gradesData[username]) {
+                                gradesData[username] = {};
+                            }
+                            
+                            if (!gradesData[username][subject]) {
+                                gradesData[username][subject] = {};
+                            }
+                            
+                            gradesData[username][subject][gradeType] = grade;
+                        }
+                    });
+                    
+                    appStorage.setItem('grades', JSON.stringify(gradesData));
+                    
+                    // Actualiser l'affichage
+                    populateStudentGradesTable();
+                    
+                    alert('Notes importées avec succès');
+                } catch (error) {
+                    console.error('Erreur lors de l\'importation du fichier:', error);
+                    alert('Erreur lors de l\'importation du fichier. Veuillez vérifier le format.');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+            
+            // Réinitialiser le champ de fichier
+            e.target.value = '';
+        }
+
+        // Exporter les notes vers Excel
+        function exportGradesToExcel() {
+            const subject = document.getElementById('export-subject').value;
+            if (!subject) {
+                alert('Veuillez sélectionner une matière');
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            
+            // Créer les données pour l'export
+            const data = [];
+            
+            // En-têtes
+            const headers = ['Nom', 'Username', 'Niveau'];
+            
+            if (subjectsData[subject].hasDirected) headers.push('Travaux Dirigés');
+            if (subjectsData[subject].hasPractical) headers.push('Travaux Pratiques');
+            if (subjectsData[subject].hasExam) headers.push('Examen');
+            headers.push('Note Finale');
+            
+            data.push(headers);
+            
+            // Données des étudiants
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student')
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            students.forEach(student => {
+                const studentGrades = gradesData[student.username] && gradesData[student.username][subject] ? gradesData[student.username][subject] : {};
+                
+                const row = [student.name, student.username, student.level];
+                
+                let hasGrades = false;
+                let finalGrade = 0;
+                
+                // Ajouter les notes selon le type d'évaluation
+                if (subjectsData[subject].hasDirected) {
+                    const directedGrade = studentGrades.directed !== undefined ? studentGrades.directed : '';
+                    row.push(directedGrade);
+                    if (directedGrade !== '') hasGrades = true;
+                }
+                
+                if (subjectsData[subject].hasPractical) {
+                    const practicalGrade = studentGrades.practical !== undefined ? studentGrades.practical : '';
+                    row.push(practicalGrade);
+                    if (practicalGrade !== '') hasGrades = true;
+                }
+                
+                if (subjectsData[subject].hasExam) {
+                    const examGrade = studentGrades.exam !== undefined ? studentGrades.exam : '';
+                    row.push(examGrade);
+                    if (examGrade !== '') hasGrades = true;
+                }
+                
+                // Calculer la note finale si des notes existent
+                if (hasGrades) {
+                    // Calcul identique à celui de la fonction populateTranscript
+                    const directedGrade = studentGrades.directed || 0;
+                    const practicalGrade = studentGrades.practical || 0;
+                    const examGrade = studentGrades.exam || 0;
+                    
+                    if (subjectsData[subject].hasDirected && subjectsData[subject].hasPractical && subjectsData[subject].hasExam) {
+                        finalGrade = directedGrade * 0.2 + practicalGrade * 0.2 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasDirected && subjectsData[subject].hasExam) {
+                        finalGrade = directedGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasPractical && subjectsData[subject].hasExam) {
+                        finalGrade = practicalGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasDirected && subjectsData[subject].hasPractical) {
+                        finalGrade = directedGrade * 0.5 + practicalGrade * 0.5;
+                    } else if (subjectsData[subject].hasDirected) {
+                        finalGrade = directedGrade;
+                    } else if (subjectsData[subject].hasPractical) {
+                        finalGrade = practicalGrade;
+                    } else if (subjectsData[subject].hasExam) {
+                        finalGrade = examGrade;
+                    }
+                    
+                    row.push(finalGrade.toFixed(2));
+                } else {
+                    row.push('');
+                }
+                
+                data.push(row);
+            });
+            
+            // Créer une feuille de calcul
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, subject);
+            
+            // Enregistrer le fichier
+            XLSX.writeFile(wb, `Notes_${subject}.xlsx`);
+        }
+
+        // Exporter les notes vers CSV
+        function exportGradesToCSV() {
+            const subject = document.getElementById('export-subject').value;
+            if (!subject) {
+                alert('Veuillez sélectionner une matière');
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            
+            let csvContent = 'Nom,Username,Niveau,';
+            
+            if (subjectsData[subject].hasDirected) csvContent += 'Travaux Dirigés,';
+            if (subjectsData[subject].hasPractical) csvContent += 'Travaux Pratiques,';
+            if (subjectsData[subject].hasExam) csvContent += 'Examen,';
+            csvContent += 'Note Finale\n';
+            
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student')
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            students.forEach(student => {
+                const studentGrades = gradesData[student.username] && gradesData[student.username][subject] ? gradesData[student.username][subject] : {};
+                
+                let finalGrade = 0;
+                let hasGrades = false;
+                
+                csvContent += `"${student.name}","${student.username}","${student.level}",`;
+                
+                if (subjectsData[subject].hasDirected) {
+                    const directedGrade = studentGrades.directed !== undefined ? studentGrades.directed : '';
+                    csvContent += `${directedGrade},`;
+                    if (directedGrade !== '') hasGrades = true;
+                }
+                
+                if (subjectsData[subject].hasPractical) {
+                    const practicalGrade = studentGrades.practical !== undefined ? studentGrades.practical : '';
+                    csvContent += `${practicalGrade},`;
+                    if (practicalGrade !== '') hasGrades = true;
+                }
+                
+                if (subjectsData[subject].hasExam) {
+                    const examGrade = studentGrades.exam !== undefined ? studentGrades.exam : '';
+                    csvContent += `${examGrade},`;
+                    if (examGrade !== '') hasGrades = true;
+                }
+                
+                if (hasGrades) {
+                    // Calcul identique à celui pour Excel
+                    const directedGrade = studentGrades.directed || 0;
+                    const practicalGrade = studentGrades.practical || 0;
+                    const examGrade = studentGrades.exam || 0;
+                    
+                    if (subjectsData[subject].hasDirected && subjectsData[subject].hasPractical && subjectsData[subject].hasExam) {
+                        finalGrade = directedGrade * 0.2 + practicalGrade * 0.2 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasDirected && subjectsData[subject].hasExam) {
+                        finalGrade = directedGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasPractical && subjectsData[subject].hasExam) {
+                        finalGrade = practicalGrade * 0.4 + examGrade * 0.6;
+                    } else if (subjectsData[subject].hasDirected && subjectsData[subject].hasPractical) {
+                        finalGrade = directedGrade * 0.5 + practicalGrade * 0.5;
+                    } else if (subjectsData[subject].hasDirected) {
+                        finalGrade = directedGrade;
+                    } else if (subjectsData[subject].hasPractical) {
+                        finalGrade = practicalGrade;
+                    } else if (subjectsData[subject].hasExam) {
+                        finalGrade = examGrade;
+                    }
+                    
+                    csvContent += finalGrade.toFixed(2);
+                } else {
+                    csvContent += '';
+                }
+                
+                csvContent += '\n';
+            });
+            
+            // Télécharger le fichier CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Notes_${subject}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Générer le rapport final
+        function generateFinalReport() {
+            const level = document.getElementById('report-level').value;
+            
+            if (!level) {
+                alert('Veuillez sélectionner un niveau');
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            
+            // Obtenir les étudiants du niveau sélectionné
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student' && userData.level === level)
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            // Obtenir toutes les matières
+            const allSubjects = Object.keys(subjectsData);
+            
+            // Créer l'en-tête du tableau
+            const reportHeader = document.getElementById('report-header');
+            reportHeader.innerHTML = '';
+            
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'bg-gray-50 dark:bg-gray-900';
+            
+            const nameHeader = document.createElement('th');
+            nameHeader.className = 'py-3 px-4 text-left font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700';
+            nameHeader.textContent = 'Nom de l\'étudiant';
+            headerRow.appendChild(nameHeader);
+            
+            // En-têtes pour chaque matière
+            allSubjects.forEach(subject => {
+                const subjectHeader = document.createElement('th');
+                subjectHeader.className = 'py-3 px-4 text-center font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700';
+                subjectHeader.textContent = subject;
+                headerRow.appendChild(subjectHeader);
+            });
+            
+            // En-tête pour la moyenne générale
+            const avgHeader = document.createElement('th');
+            avgHeader.className = 'py-3 px-4 text-center font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700';
+            avgHeader.textContent = 'Moyenne';
+            headerRow.appendChild(avgHeader);
+            
+            reportHeader.appendChild(headerRow);
+            
+            // Créer les lignes pour chaque étudiant
+            const reportBody = document.getElementById('report-body');
+            reportBody.innerHTML = '';
+            
+            students.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900';
+                
+                // Cellule pour le nom
+                const nameCell = document.createElement('td');
+                nameCell.className = 'py-3 px-4 font-medium';
+                nameCell.textContent = student.name;
+                row.appendChild(nameCell);
+                
+                // Variables pour calculer la moyenne générale
+                let totalWeightedGrade = 0;
+                let totalCoefficients = 0;
+                let completedSubjects = 0;
+                
+                // Cellules pour chaque matière
+                allSubjects.forEach(subject => {
+                    const subjectData = subjectsData[subject];
+                    const studentGrades = gradesData[student.username] && gradesData[student.username][subject] ? gradesData[student.username][subject] : {};
+                    
+                    const cell = document.createElement('td');
+                    cell.className = 'py-3 px-4 text-center';
+                    
+                    // Vérifier si l'étudiant a des notes pour cette matière
+                    if (Object.keys(studentGrades).length > 0) {
+                        completedSubjects++;
+                        
+                        // Calculer la note finale
+                        const directedGrade = studentGrades.directed || 0;
+                        const practicalGrade = studentGrades.practical || 0;
+                        const examGrade = studentGrades.exam || 0;
+                        
+                        let finalGrade = 0;
+                        
+                        if (subjectData.hasDirected && subjectData.hasPractical && subjectData.hasExam) {
+                            finalGrade = directedGrade * 0.2 + practicalGrade * 0.2 + examGrade * 0.6;
+                        } else if (subjectData.hasDirected && subjectData.hasExam) {
+                            finalGrade = directedGrade * 0.4 + examGrade * 0.6;
+                        } else if (subjectData.hasPractical && subjectData.hasExam) {
+                            finalGrade = practicalGrade * 0.4 + examGrade * 0.6;
+                        } else if (subjectData.hasDirected && subjectData.hasPractical) {
+                            finalGrade = directedGrade * 0.5 + practicalGrade * 0.5;
+                        } else if (subjectData.hasDirected) {
+                            finalGrade = directedGrade;
+                        } else if (subjectData.hasPractical) {
+                            finalGrade = practicalGrade;
+                        } else if (subjectData.hasExam) {
+                            finalGrade = examGrade;
+                        }
+                        
+                        cell.textContent = finalGrade.toFixed(2);
+                        
+                        if (finalGrade >= 10) {
+                            cell.classList.add('text-success');
+                        } else {
+                            cell.classList.add('text-danger');
+                        }
+                        
+                        // Calculer pour la moyenne générale
+                        totalWeightedGrade += finalGrade * subjectData.coefficient;
+                        totalCoefficients += subjectData.coefficient;
+                    } else {
+                        cell.textContent = '-';
+                        cell.classList.add('text-gray-400');
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                // Cellule pour la moyenne générale
+                const avgCell = document.createElement('td');
+                avgCell.className = 'py-3 px-4 text-center font-bold';
+                
+                if (completedSubjects >= 6 && totalCoefficients > 0) {
+                    const overallAverage = totalWeightedGrade / totalCoefficients;
+                    avgCell.textContent = overallAverage.toFixed(2);
+                    
+                    if (overallAverage >= 10) {
+                        avgCell.classList.add('text-success');
+                    } else {
+                        avgCell.classList.add('text-danger');
+                    }
+                } else {
+                    avgCell.textContent = 'N/A';
+                    avgCell.classList.add('text-gray-400');
+                }
+                
+                row.appendChild(avgCell);
+                reportBody.appendChild(row);
+            });
+            
+            // Afficher l'aperçu du rapport
+            document.getElementById('report-preview').classList.remove('hidden');
+        }
+
+        // Exporter le rapport final
+        function exportFinalReport() {
+            const level = document.getElementById('report-level').value;
+            
+            if (!level) {
+                alert('Veuillez sélectionner un niveau');
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const gradesData = JSON.parse(appStorage.getItem('grades'));
+            const subjectsData = JSON.parse(appStorage.getItem('subjects'));
+            
+            // Obtenir les étudiants du niveau sélectionné
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student' && userData.level === level)
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            // Obtenir toutes les matières
+            const allSubjects = Object.keys(subjectsData);
+            
+            // Créer les données pour l'export
+            const data = [];
+            
+            // En-têtes
+            const headers = ['Nom'];
+            allSubjects.forEach(subject => headers.push(subject));
+            headers.push('Moyenne');
+            
+            data.push(headers);
+            
+            // Données pour chaque étudiant
+            students.forEach(student => {
+                const row = [student.name];
+                
+                // Variables pour calculer la moyenne générale
+                let totalWeightedGrade = 0;
+                let totalCoefficients = 0;
+                let completedSubjects = 0;
+                
+                // Notes pour chaque matière
+                allSubjects.forEach(subject => {
+                    const subjectData = subjectsData[subject];
+                    const studentGrades = gradesData[student.username] && gradesData[student.username][subject] ? gradesData[student.username][subject] : {};
+                    
+                    // Vérifier si l'étudiant a des notes pour cette matière
+                    if (Object.keys(studentGrades).length > 0) {
+                        completedSubjects++;
+                        
+                        // Calculer la note finale
+                        const directedGrade = studentGrades.directed || 0;
+                        const practicalGrade = studentGrades.practical || 0;
+                        const examGrade = studentGrades.exam || 0;
+                        
+                        let finalGrade = 0;
+                        
+                        if (subjectData.hasDirected && subjectData.hasPractical && subjectData.hasExam) {
+                            finalGrade = directedGrade * 0.2 + practicalGrade * 0.2 + examGrade * 0.6;
+                        } else if (subjectData.hasDirected && subjectData.hasExam) {
+                            finalGrade = directedGrade * 0.4 + examGrade * 0.6;
+                        } else if (subjectData.hasPractical && subjectData.hasExam) {
+                            finalGrade = practicalGrade * 0.4 + examGrade * 0.6;
+                        } else if (subjectData.hasDirected && subjectData.hasPractical) {
+                            finalGrade = directedGrade * 0.5 + practicalGrade * 0.5;
+                        } else if (subjectData.hasDirected) {
+                            finalGrade = directedGrade;
+                        } else if (subjectData.hasPractical) {
+                            finalGrade = practicalGrade;
+                        } else if (subjectData.hasExam) {
+                            finalGrade = examGrade;
+                        }
+                        
+                        row.push(finalGrade.toFixed(2));
+                        
+                        // Calculer pour la moyenne générale
+                        totalWeightedGrade += finalGrade * subjectData.coefficient;
+                        totalCoefficients += subjectData.coefficient;
+                    } else {
+                        row.push('-');
+                    }
+                });
+                
+                // Moyenne générale
+                if (completedSubjects >= 6 && totalCoefficients > 0) {
+                    const overallAverage = totalWeightedGrade / totalCoefficients;
+                    row.push(overallAverage.toFixed(2));
+                } else {
+                    row.push('N/A');
+                }
+                
+                data.push(row);
+            });
+            
+            // Créer une feuille de calcul
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, `Rapport ${level}`);
+            
+            // Enregistrer le fichier
+            XLSX.writeFile(wb, `Rapport_Final_${level.replace(/ /g, '_')}.xlsx`);
+        }
+
+        // Afficher les réclamations pour le professeur
+        function populateAppeals() {
+            const container = document.getElementById('appeals-list');
+            container.innerHTML = '';
+            
+            const appealsData = JSON.parse(appStorage.getItem('appeals'));
+            const appeals = appealsData[currentUser.username] || [];
+            
+            if (appeals.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 dark:text-gray-400">Aucune réclamation pour le moment</p>';
+                return;
+            }
+            
+            appeals.forEach(appeal => {
+                const appealDiv = document.createElement('div');
+                appealDiv.className = 'bg-gray-50 dark:bg-gray-900 p-4 rounded-lg mb-4';
+                
+                const header = document.createElement('div');
+                header.className = 'flex justify-between mb-2';
+                
+                const studentName = document.createElement('h3');
+                studentName.className = 'font-bold';
+                const users = JSON.parse(appStorage.getItem('users'));
+                studentName.textContent = users[appeal.student].name;
+                header.appendChild(studentName);
+                
+                const subjectName = document.createElement('div');
+                subjectName.className = 'text-gray-600 dark:text-gray-400';
+                subjectName.textContent = `${appeal.subject} - ${appeal.exam ? 'Examen' : appeal.practical ? 'Travaux Pratiques' : 'Travaux Dirigés'}`;
+                header.appendChild(subjectName);
+                
+                appealDiv.appendChild(header);
+                
+                const grade = document.createElement('div');
+                grade.className = 'mb-2';
+                grade.innerHTML = `<span class="font-bold">Note actuelle:</span> ${appeal.grade}`;
+                appealDiv.appendChild(grade);
+                
+                const message = document.createElement('div');
+                message.className = 'p-3 bg-white dark:bg-gray-800 rounded-lg mb-2';
+                message.textContent = appeal.message;
+                appealDiv.appendChild(message);
+                
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'flex justify-end space-x-2';
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg focus:outline-none transition text-sm';
+                rejectBtn.textContent = 'Rejeter';
+                rejectBtn.addEventListener('click', () => {
+                    // Supprimer la réclamation
+                    const index = appealsData[currentUser.username].findIndex(a => 
+                        a.student === appeal.student && 
+                        a.subject === appeal.subject && 
+                        a.exam === appeal.exam
+                    );
+                    
+                    if (index !== -1) {
+                        appealsData[currentUser.username].splice(index, 1);
+                        appStorage.setItem('appeals', JSON.stringify(appealsData));
+                        populateAppeals();
+                    }
+                });
+                buttonsDiv.appendChild(rejectBtn);
+                
+                const acceptBtn = document.createElement('button');
+                acceptBtn.className = 'bg-primary hover:bg-opacity-90 text-white font-bold py-1 px-3 rounded-lg focus:outline-none transition text-sm';
+                acceptBtn.textContent = 'Accepter et modifier';
+                acceptBtn.addEventListener('click', () => {
+                    // Ouvrir une boîte de dialogue pour modifier la note
+                    const newGrade = prompt('Entrez la nouvelle note:', appeal.grade);
+                    if (newGrade !== null) {
+                        const gradeValue = parseFloat(newGrade);
+                        if (!isNaN(gradeValue) && gradeValue >= 0 && gradeValue <= 20) {
+                            // Mettre à jour la note
+                            const gradesData = JSON.parse(appStorage.getItem('grades'));
+                            const gradeType = appeal.exam ? 'exam' : appeal.practical ? 'practical' : 'directed';
+                            
+                            if (gradesData[appeal.student] && gradesData[appeal.student][appeal.subject]) {
+                                gradesData[appeal.student][appeal.subject][gradeType] = gradeValue;
+                                appStorage.setItem('grades', JSON.stringify(gradesData));
+                            }
+                            
+                            // Supprimer la réclamation
+                            const index = appealsData[currentUser.username].findIndex(a => 
+                                a.student === appeal.student && 
+                                a.subject === appeal.subject && 
+                                a.exam === appeal.exam
+                            );
+                            
+                            if (index !== -1) {
+                                appealsData[currentUser.username].splice(index, 1);
+                                appStorage.setItem('appeals', JSON.stringify(appealsData));
+                                populateAppeals();
+                            }
+                        } else {
+                            alert('Veuillez entrer une note valide entre 0 et 20');
+                        }
+                    }
+                });
+                buttonsDiv.appendChild(acceptBtn);
+                
+                appealDiv.appendChild(buttonsDiv);
+                container.appendChild(appealDiv);
+            });
+        }
+
+        // Afficher les étudiants pour les commentaires
+        function populateStudentsForComments() {
+            const studentSelect = document.getElementById('comment-student');
+            studentSelect.innerHTML = '';
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            const comments = JSON.parse(appStorage.getItem('comments'));
+            
+            const students = Object.entries(users)
+                .filter(([_, userData]) => userData.type === 'student')
+                .map(([username, userData]) => ({ username, ...userData }));
+            
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.username;
+                option.textContent = student.name;
+                studentSelect.appendChild(option);
+            });
+            
+            if (students.length > 0) {
+                const firstStudent = students[0].username;
+                studentSelect.value = firstStudent;
+                document.getElementById('student-comment').value = comments[firstStudent] || '';
+            }
+            
+            studentSelect.addEventListener('change', function() {
+                const selectedStudent = this.value;
+                document.getElementById('student-comment').value = comments[selectedStudent] || '';
+            });
+        }
+
+        // Enregistrer le commentaire
+        function saveComment() {
+            const student = document.getElementById('comment-student').value;
+            const comment = document.getElementById('student-comment').value;
+            
+            if (!student) return;
+            
+            const comments = JSON.parse(appStorage.getItem('comments')) || {};
+            comments[student] = comment;
+            appStorage.setItem('comments', JSON.stringify(comments));
+            
+            alert('Commentaire enregistré avec succès');
+        }
+
+        // Charger les données de l'emploi du temps
+        function loadScheduleData() {
+            const level = document.getElementById('schedule-level').value;
+            const scheduleType = document.getElementById('schedule-type').value;
+            
+            if (scheduleType === 'timetable') {
+                loadTimetable(level);
+            } else {
+                loadExamSchedule(level);
+            }
+        }
+
+        // Charger l'emploi du temps
+        function loadTimetable(level) {
+            const timetableData = JSON.parse(appStorage.getItem('timetables'));
+            const container = document.getElementById('timetable-days');
+            container.innerHTML = '';
+            
+            const timetable = timetableData[level] || [];
+            
+            timetable.forEach((day, index) => {
+                const dayDiv = createTimetableDay(day, index);
+                container.appendChild(dayDiv);
+            });
+        }
+
+        // Créer un élément de jour dans l'emploi du temps
+        function createTimetableDay(day = { day: '', slots: [] }, index) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'mb-4 p-3 border border-gray-200 dark:border-gray-700 rounded-lg';
+            
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-2';
+            
+            const dayLabel = document.createElement('label');
+            dayLabel.className = 'font-bold';
+            dayLabel.textContent = 'Jour:';
+            header.appendChild(dayLabel);
+            
+            const dayInput = document.createElement('input');
+            dayInput.type = 'text';
+            dayInput.className = 'ml-2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+            dayInput.value = day.day || '';
+            dayInput.dataset.index = index;
+            header.appendChild(dayInput);
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'bg-danger hover:bg-opacity-90 text-white font-bold py-1 px-2 rounded-lg focus:outline-none transition text-sm';
+            removeButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            removeButton.addEventListener('click', function() {
+                dayDiv.remove();
+            });
+            header.appendChild(removeButton);
+            
+            dayDiv.appendChild(header);
+            
+            const slotsDiv = document.createElement('div');
+            slotsDiv.className = 'mt-2';
+            
+            const slotsLabel = document.createElement('div');
+            slotsLabel.className = 'font-bold mb-1';
+            slotsLabel.textContent = 'Créneaux:';
+            slotsDiv.appendChild(slotsLabel);
+            
+            const slotsList = document.createElement('div');
+            slotsList.className = 'space-y-2';
+            
+            (day.slots || []).forEach((slot, slotIndex) => {
+                const slotItem = document.createElement('div');
+                slotItem.className = 'grid grid-cols-4 gap-2 items-center';
+                
+                // Horaire
+                const timeInput = document.createElement('input');
+                timeInput.type = 'text';
+                timeInput.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                timeInput.placeholder = 'Horaire';
+                timeInput.value = slot.time || '';
+                slotItem.appendChild(timeInput);
+                
+                // Matière
+                const subjectSelect = document.createElement('select');
+                subjectSelect.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                
+                // Ajouter les options de matière
+                const subjects = JSON.parse(appStorage.getItem('subjects'));
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Choisir la matière';
+                subjectSelect.appendChild(emptyOption);
+                
+                Object.keys(subjects).forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = subject;
+                    if (slot.subject === subject) {
+                        option.selected = true;
+                    }
+                    subjectSelect.appendChild(option);
+                });
+                
+                slotItem.appendChild(subjectSelect);
+                
+                // Salle
+                const roomInput = document.createElement('input');
+                roomInput.type = 'text';
+                roomInput.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                roomInput.placeholder = 'Salle';
+                roomInput.value = slot.room || '';
+                slotItem.appendChild(roomInput);
+                
+                // Type
+                const typeSelect = document.createElement('select');
+                typeSelect.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                
+                // Ajouter les options de type
+                ['Cours', 'TD', 'TP'].forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    if (slot.type === type) {
+                        option.selected = true;
+                    }
+                    typeSelect.appendChild(option);
+                });
+                
+                slotItem.appendChild(typeSelect);
+                
+                // Bouton supprimer
+                const removeSlotBtn = document.createElement('button');
+                removeSlotBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg focus:outline-none transition text-sm';
+                removeSlotBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeSlotBtn.addEventListener('click', function() {
+                    slotItem.remove();
+                });
+                slotItem.appendChild(removeSlotBtn);
+                
+                slotsList.appendChild(slotItem);
+            });
+            
+            slotsDiv.appendChild(slotsList);
+            
+            const addSlotBtn = document.createElement('button');
+            addSlotBtn.className = 'mt-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg focus:outline-none transition text-sm';
+            addSlotBtn.innerHTML = '<i class="fas fa-plus"></i> Ajouter un créneau';
+            addSlotBtn.addEventListener('click', function() {
+                const slotItem = document.createElement('div');
+                slotItem.className = 'grid grid-cols-4 gap-2 items-center';
+                
+                // Horaire
+                const timeInput = document.createElement('input');
+                timeInput.type = 'text';
+                timeInput.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                timeInput.placeholder = 'Horaire';
+                slotItem.appendChild(timeInput);
+                
+                // Matière
+                const subjectSelect = document.createElement('select');
+                subjectSelect.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                
+                // Ajouter les options de matière
+                const subjects = JSON.parse(appStorage.getItem('subjects'));
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = 'Choisir la matière';
+                subjectSelect.appendChild(emptyOption);
+                
+                Object.keys(subjects).forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject;
+                    option.textContent = subject;
+                    subjectSelect.appendChild(option);
+                });
+                
+                slotItem.appendChild(subjectSelect);
+                
+                // Salle
+                const roomInput = document.createElement('input');
+                roomInput.type = 'text';
+                roomInput.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                roomInput.placeholder = 'Salle';
+                slotItem.appendChild(roomInput);
+                
+                // Type
+                const typeSelect = document.createElement('select');
+                typeSelect.className = 'px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+                
+                // Ajouter les options de type
+                ['Cours', 'TD', 'TP'].forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    typeSelect.appendChild(option);
+                });
+                
+                slotItem.appendChild(typeSelect);
+                
+                // Bouton supprimer
+                const removeSlotBtn = document.createElement('button');
+                removeSlotBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 rounded-lg focus:outline-none transition text-sm';
+                removeSlotBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeSlotBtn.addEventListener('click', function() {
+                    slotItem.remove();
+                });
+                slotItem.appendChild(removeSlotBtn);
+                
+                slotsList.appendChild(slotItem);
+            });
+            
+            slotsDiv.appendChild(addSlotBtn);
+            dayDiv.appendChild(slotsDiv);
+            
+            return dayDiv;
+        }
+
+        // Ajouter un jour à l'emploi du temps
+        function addTimetableDay() {
+            const container = document.getElementById('timetable-days');
+            const dayDiv = createTimetableDay();
+            container.appendChild(dayDiv);
+        }
+
+        // Charger le calendrier des examens
+        function loadExamSchedule(level) {
+            const examScheduleData = JSON.parse(appStorage.getItem('examSchedule'));
+            const container = document.getElementById('exam-schedule-items');
+            container.innerHTML = '';
+            
+            const examSchedule = examScheduleData[level] || [];
+            
+            examSchedule.forEach((exam, index) => {
+                const examDiv = createExamScheduleItem(exam, index);
+                container.appendChild(examDiv);
+            });
+        }
+
+        // Créer un élément dans le calendrier des examens
+        function createExamScheduleItem(exam = { subject: '', date: '', time: '', room: '' }, index) {
+            const examDiv = document.createElement('div');
+            examDiv.className = 'mb-4 p-3 border border-gray-200 dark:border-gray-700 rounded-lg';
+            
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-2';
+            
+            const examTitle = document.createElement('div');
+            examTitle.className = 'font-bold';
+            examTitle.textContent = `Examen ${index + 1}`;
+            header.appendChild(examTitle);
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'bg-danger hover:bg-opacity-90 text-white font-bold py-1 px-2 rounded-lg focus:outline-none transition text-sm';
+            removeButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            removeButton.addEventListener('click', function() {
+                examDiv.remove();
+            });
+            header.appendChild(removeButton);
+            
+            examDiv.appendChild(header);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+            
+            // Matière
+            const subjectDiv = document.createElement('div');
+            subjectDiv.className = 'mb-2';
+            const subjectLabel = document.createElement('label');
+            subjectLabel.className = 'block text-sm font-medium mb-1';
+            subjectLabel.textContent = 'Matière:';
+            subjectDiv.appendChild(subjectLabel);
+            
+            const subjectSelect = document.createElement('select');
+            subjectSelect.className = 'w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+            
+            // Ajouter les options de matière
+            const subjects = JSON.parse(appStorage.getItem('subjects'));
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = 'Choisir la matière';
+            subjectSelect.appendChild(emptyOption);
+            
+            Object.keys(subjects).forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                if (exam.subject === subject) {
+                    option.selected = true;
+                }
+                subjectSelect.appendChild(option);
+            });
+            
+            subjectDiv.appendChild(subjectSelect);
+            contentDiv.appendChild(subjectDiv);
+            
+            // Date
+            const dateDiv = document.createElement('div');
+            dateDiv.className = 'mb-2';
+            const dateLabel = document.createElement('label');
+            dateLabel.className = 'block text-sm font-medium mb-1';
+            dateLabel.textContent = 'Date:';
+            dateDiv.appendChild(dateLabel);
+            
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.className = 'w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+            dateInput.value = exam.date || '';
+            dateDiv.appendChild(dateInput);
+            contentDiv.appendChild(dateDiv);
+            
+            // Horaire
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'mb-2';
+            const timeLabel = document.createElement('label');
+            timeLabel.className = 'block text-sm font-medium mb-1';
+            timeLabel.textContent = 'Horaire:';
+            timeDiv.appendChild(timeLabel);
+            
+            const timeInput = document.createElement('input');
+            timeInput.type = 'text';
+            timeInput.className = 'w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+            timeInput.value = exam.time || '';
+            timeInput.placeholder = 'ex: 09:00-11:00';
+            timeDiv.appendChild(timeInput);
+            contentDiv.appendChild(timeDiv);
+            
+            // Salle
+            const roomDiv = document.createElement('div');
+            roomDiv.className = 'mb-2';
+            const roomLabel = document.createElement('label');
+            roomLabel.className = 'block text-sm font-medium mb-1';
+            roomLabel.textContent = 'Salle:';
+            roomDiv.appendChild(roomLabel);
+            
+            const roomInput = document.createElement('input');
+            roomInput.type = 'text';
+            roomInput.className = 'w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-base focus:outline-none focus:ring-2 focus:ring-primary';
+            roomInput.value = exam.room || '';
+            roomDiv.appendChild(roomInput);
+            contentDiv.appendChild(roomDiv);
+            
+            examDiv.appendChild(contentDiv);
+            
+            return examDiv;
+        }
+
+        // Ajouter un examen au calendrier
+        function addExamScheduleItem() {
+            const container = document.getElementById('exam-schedule-items');
+            const examDiv = createExamScheduleItem();
+            container.appendChild(examDiv);
+        }
+
+        // Enregistrer l'emploi du temps
+        function saveSchedule() {
+            const level = document.getElementById('schedule-level').value;
+            const scheduleType = document.getElementById('schedule-type').value;
+            
+            if (scheduleType === 'timetable') {
+                saveTimetable(level);
+            } else {
+                saveExamSchedule(level);
+            }
+        }
+
+        // Enregistrer l'emploi du temps
+        function saveTimetable(level) {
+            const timetableData = JSON.parse(appStorage.getItem('timetables')) || {};
+            const dayDivs = document.querySelectorAll('#timetable-days > div');
+            
+            const newTimetable = [];
+            
+            dayDivs.forEach(dayDiv => {
+                const dayInput = dayDiv.querySelector('input[type="text"]');
+                const slotRows = dayDiv.querySelectorAll('.space-y-2 > div');
+                
+                const day = dayInput.value.trim();
+                if (!day) return;
+                
+                const slots = [];
+                slotRows.forEach(slotRow => {
+                    const inputs = slotRow.querySelectorAll('input, select');
+                    if (inputs.length >= 4) {
+                        const time = inputs[0].value.trim();
+                        const subject = inputs[1].value.trim();
+                        const room = inputs[2].value.trim();
+                        const type = inputs[3].value.trim();
+                        
+                        if (time && subject) {
+                            slots.push({
+                                time,
+                                subject,
+                                room,
+                                type
+                            });
+                        }
+                    }
+                });
+                
+                newTimetable.push({
+                    day,
+                    slots
+                });
+            });
+            
+            timetableData[level] = newTimetable;
+            appStorage.setItem('timetables', JSON.stringify(timetableData));
+            
+            alert('Emploi du temps enregistré avec succès');
+        }
+
+        // Enregistrer le calendrier des examens
+        function saveExamSchedule(level) {
+            const examScheduleData = JSON.parse(appStorage.getItem('examSchedule')) || {};
+            const examDivs = document.querySelectorAll('#exam-schedule-items > div');
+            
+            const newExamSchedule = [];
+            
+            examDivs.forEach(examDiv => {
+                const inputs = examDiv.querySelectorAll('select, input');
+                
+                if (inputs.length >= 4) {
+                    const subject = inputs[0].value.trim();
+                    const date = inputs[1].value.trim();
+                    const time = inputs[2].value.trim();
+                    const room = inputs[3].value.trim();
+                    
+                    if (subject && date) {
+                        newExamSchedule.push({
+                            subject,
+                            date,
+                            time: time || 'Non défini',
+                            room: room || 'Non défini'
+                        });
+                    }
+                }
+            });
+            
+            examScheduleData[level] = newExamSchedule;
+            appStorage.setItem('examSchedule', JSON.stringify(examScheduleData));
+            
+            alert('Calendrier des examens enregistré avec succès');
+        }
+
+        // Ajouter un utilisateur
+        function addUser() {
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+            const name = document.getElementById('new-name').value;
+            const type = document.getElementById('new-type').value;
+            const result = document.getElementById('add-user-result');
+            
+            if (!username || !password || !name) {
+                result.textContent = 'Veuillez remplir tous les champs';
+                result.className = 'mt-3 text-center text-danger';
+                return;
+            }
+            
+            const users = JSON.parse(appStorage.getItem('users'));
+            
+            if (users[username]) {
+                result.textContent = 'Ce nom d\'utilisateur existe déjà';
+                result.className = 'mt-3 text-center text-danger';
+                return;
+            }
+            
+            const newUser = {
+                password,
+                type,
+                name
+            };
+            
+            if (type === 'student') {
+                newUser.level = document.getElementById('new-level').value;
+            } else if (type === 'teacher') {
+                newUser.teachingRole = document.getElementById('teaching-role').value;
+                
+                const subjectCheckboxes = document.querySelectorAll('#subjects-checkboxes input:checked');
+                const subjects = Array.from(subjectCheckboxes).map(checkbox => checkbox.value);
+                
+                if (subjects.length === 0) {
+                    result.textContent = 'Veuillez sélectionner au moins une matière';
+                    result.className = 'mt-3 text-center text-danger';
+                    return;
+                }
+                
+                newUser.subjects = subjects;
+            }
+            
+            users[username] = newUser;
+            appStorage.setItem('users', JSON.stringify(users));
+            
+            result.textContent = 'Utilisateur ajouté avec succès';
+            result.className = 'mt-3 text-center text-success';
+            
+            // Réinitialiser le formulaire
+            document.getElementById('new-username').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('new-name').value = '';
+            
+            // Mettre à jour la liste des professeurs si nécessaire
+            if (type === 'teacher') {
+                populateTeachersDropdowns();
+            }
+        }
+
+        // Afficher la boîte de dialogue de réclamation
+        function showAppealModal(subject, type, grade) {
+            currentSubject = subject;
+            currentAppealType = type;
+            currentAppealGrade = grade;
+            
+            document.getElementById('appeal-subject-text').textContent = subject;
+            document.getElementById('appeal-type-text').textContent = type;
+            document.getElementById('appeal-text').value = '';
+            
+            document.getElementById('appeal-modal').classList.remove('hidden');
+        }
+
+        // Fermer la boîte de dialogue de réclamation
+        function closeAppealModal() {
+            document.getElementById('appeal-modal').classList.add('hidden');
+        }
+
+        // Soumettre une réclamation
+        function submitAppeal() {
+            const appealText = document.getElementById('appeal-text').value;
+            
+            if (!appealText.trim()) {
+                alert('Veuillez décrire la raison de votre réclamation');
+                return;
+            }
+            
+            // Déterminer le professeur responsable de la matière
+            const users = JSON.parse(appStorage.getItem('users'));
+            const subjectTeachers = JSON.parse(appStorage.getItem('subjectTeachers')) || {};
+            let responsibleTeacher = null;
+            
+            // Vérifier si un professeur est assigné spécifiquement
+            if (subjectTeachers[currentSubject]) {
+                if (currentAppealType === 'Travaux Dirigés' && subjectTeachers[currentSubject].directed) {
+                    responsibleTeacher = subjectTeachers[currentSubject].directed;
+                } else if (currentAppealType === 'Travaux Pratiques' && subjectTeachers[currentSubject].practical) {
+                    responsibleTeacher = subjectTeachers[currentSubject].practical;
+                } else if (currentAppealType === 'Examen' && subjectTeachers[currentSubject].exam) {
+                    responsibleTeacher = subjectTeachers[currentSubject].exam;
+                }
+            }
+            
+            // Si aucun professeur spécifique n'est trouvé, chercher un professeur général pour cette matière
+            if (!responsibleTeacher) {
+                for (const [username, userData] of Object.entries(users)) {
+                    if (userData.type === 'teacher' && userData.subjects && userData.subjects.includes(currentSubject)) {
+                        responsibleTeacher = username;
+                        break;
+                    }
+                }
+            }
+            
+            if (!responsibleTeacher) {
+                alert('Aucun professeur responsable trouvé pour cette matière');
+                closeAppealModal();
+                return;
+            }
+            
+            // Ajouter la réclamation
+            const appealsData = JSON.parse(appStorage.getItem('appeals')) || {};
+            
+            if (!appealsData[responsibleTeacher]) {
+                appealsData[responsibleTeacher] = [];
+            }
+            
+            appealsData[responsibleTeacher].push({
+                student: currentUser.username,
+                subject: currentSubject,
+                exam: currentAppealType === 'Examen',
+                practical: currentAppealType === 'Travaux Pratiques',
+                grade: currentAppealGrade,
+                message: appealText
+            });
+            
+            appStorage.setItem('appeals', JSON.stringify(appealsData));
+            
+            alert('Réclamation soumise avec succès');
+            closeAppealModal();
+        }
+    </script>
+</body>
+</html>
